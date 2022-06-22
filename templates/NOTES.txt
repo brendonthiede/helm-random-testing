@@ -2,6 +2,11 @@
 Information about {{ template "tmpchart.fullname" . }}-secret
 -------------------------------------------------------------------
 
+{{- if .Release.IsInstall }}
+This is an install
+{{- else}}
+This is an upgrade
+{{- end }}
 {{- if .Values.providedPassword }}
 A password was provided, so it should have been created or updated to a value of {{ .Values.providedPassword }}
 {{- else }}
