@@ -31,19 +31,27 @@ function rollback() {
 }
 
 function getPasswordValue() {
-    kubectl --namespace ${NAMESPACE} get secret ${RELEASE_NAME}-secret -o jsonpath='{.data.my-password}' | base64 -d
+    local -r _other_name="${1}"
+    kubectl --namespace ${NAMESPACE} get secret ${RELEASE_NAME}${_other_name}-secret -o jsonpath='{.data.my-password}' | base64 -d
 }
 
 function isPasswordExpectedValue() {
-    local -r _password_value="$(getPasswordValue)"
-    if [[ "${_password_value}" == "${EXPECTED_PASSWORD}" ]]; then
-        echo "[SUCCESS] Password matches expected value of ${EXPECTED_PASSWORD}"
+    local -r _other_name="${1}"
+    local -r _expected_password="${2:-"${EXPECTED_PASSWORD}"}"
+    local -r _password_value="$(getPasswordValue ${_other_name})"
+    if [[ "${_password_value}" == "${_expected_password}" ]]; then
+        echo "[SUCCESS] ${RELEASE_NAME}${_other_name}-secret password matches expected value of ${_expected_password}"
     else
-        echo "[FAIL] Password does not match expected value"
-        echo "       Expected: ${EXPECTED_PASSWORD}"
+        echo "[FAIL] ${RELEASE_NAME}${_other_name}-secret password does not match expected value"
+        echo "       Expected: ${_expected_password}"
         echo "       Actual:   ${_password_value}"
         ((EXIT_CODE += 1))
     fi
+}
+
+function arePasswordsExpectedValue() {
+    isPasswordExpectedValue
+    isPasswordExpectedValue "-other" "${EXPECTED_OTHER_PASSWORD}"
 }
 
 cleanUp
@@ -52,54 +60,59 @@ echo "-   Testing initial install with no password value"
 echo "---------------------------------------------------------------"
 install
 INITIAL_PASSWORD="$(getPasswordValue)"
+INITIAL_OTHER_PASSWORD="$(getPasswordValue "-other")"
 EXPECTED_PASSWORD="${INITIAL_PASSWORD}"
-echo "[INFO] Password is ${EXPECTED_PASSWORD} after initial install"
+EXPECTED_OTHER_PASSWORD="${INITIAL_OTHER_PASSWORD}"
+echo "[INFO] Passwords are ${EXPECTED_PASSWORD} and ${EXPECTED_OTHER_PASSWORD} after initial install"
 
 echo -e "\n[INFO] Upgrading with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
+EXPECTED_OTHER_PASSWORD=""
 EXPECTED_PASSWORD="herp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="${INITIAL_PASSWORD}"
+EXPECTED_OTHER_PASSWORD="${INITIAL_OTHER_PASSWORD}"
 echo -e "\n[INFO] Rolling back to release with value ${EXPECTED_PASSWORD}"
 rollback 1
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="herp"
+EXPECTED_OTHER_PASSWORD=""
 echo -e "\n[INFO] Rolling back to release with value ${EXPECTED_PASSWORD}"
 rollback 4
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Rolling back to release with value ${EXPECTED_PASSWORD}"
 rollback 6
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo ""
 cleanUp
@@ -108,48 +121,48 @@ echo "-   Testing initial install with provided password value"
 echo "---------------------------------------------------------------"
 EXPECTED_PASSWORD="herp"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="herp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Upgrading again with ${EXPECTED_PASSWORD} as password value"
 install ${EXPECTED_PASSWORD}
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo -e "\n[INFO] Upgrading again with no password value"
 install
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="herp"
 echo -e "\n[INFO] Rolling back to release with value ${EXPECTED_PASSWORD}"
 rollback 4
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 EXPECTED_PASSWORD="derp"
 echo -e "\n[INFO] Rolling back to release with value ${EXPECTED_PASSWORD}"
 rollback 7
-isPasswordExpectedValue
+arePasswordsExpectedValue
 
 echo ""
 if [[ ${EXIT_CODE} -eq 0 ]]; then
