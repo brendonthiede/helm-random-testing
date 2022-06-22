@@ -1,0 +1,17 @@
+-------------------------------------------------------------------
+Information about {{ template "tmpchart.fullname" . }}-secret
+-------------------------------------------------------------------
+
+{{- if .Values.providedPassword }}
+A password was provided, so it should have been created or updated to a value of {{ .Values.providedPassword }}
+{{- else }}
+A password was not provided
+{{- if .Release.IsInstall }}
+This is an install, so a random value was assigned
+{{- else }}
+This is not an install, so previous value will not be modified
+{{- end }}
+{{- end }}
+
+Check the secret value by running:
+  kubectl --namespace {{ .Release.Namespace }} get secret {{ template "tmpchart.fullname" . }}-secret -o jsonpath='{.data.my-password}' | base64 -d
