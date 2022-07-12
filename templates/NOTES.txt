@@ -7,6 +7,11 @@ This is an install
 {{- else}}
 This is an upgrade
 {{- end }}
+{{- if .Values.providedObject }}
+Object was provided
+{{- else }}
+Provided object is empty
+{{- end }}
 {{- if .Values.providedPassword }}
 A password was provided, so it should have been created or updated to a value of {{ .Values.providedPassword }}
 {{- else }}
